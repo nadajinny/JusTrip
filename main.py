@@ -17,12 +17,17 @@ load_dotenv()
 app = FastAPI()
 
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY") 
+GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 WEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_KEY")
 
 EXCHANGE_RATE_KRW_TO_USD = 0.00073
 SAVE_DIRECTORY = Path("saved_reports")
+
+URL_PROTOCOL_REGEX = re.compile(r'^(http|https)://', re.IGNORECASE)
+BULLET_POINT_REGEX = re.compile(r'^\s*[\*\-\+]\s*')
+KEY_VALUE_REGEX = re.compile(r"\*\*(.+?):\*\*\s*(.+)")
+
 
 if not all([GOOGLE_API_KEY, WEATHER_API_KEY, GEMINI_API_KEY]):
     raise EnvironmentError("Missing one or more required API keys in .env")
@@ -40,7 +45,7 @@ def group_key_value_objects(flat_list, fields_per_item=5):
     return grouped
 
 
-def get_ai_recommendation(loc: str, description: str, temperature: float, lat: float, lon: float, budget_krw: float = 0.0) -> str:
+def get_ai_recommendation(loc: str, description: str, temperature: float, lat: float, lon: float, budget_krw: float = 0.0, interests: list[str] = []) -> str:
     budget_usd = 0.0
     if budget_krw > 0:
         if EXCHANGE_RATE_KRW_TO_USD > 0:
@@ -51,25 +56,28 @@ def get_ai_recommendation(loc: str, description: str, temperature: float, lat: f
     else:
         budget_phrase = "any budget"
 
-    # IMPORTANT: Instruct the AI to explicitly include "Location:" and "Coordinates:" or similar
-    # to make parsing easier for map plotting.
+    interests_phrase = ""
+    if interests:
+        interests_str = ", ".join(interests)
+        interests_phrase = f"Considering my interests in: {interests_str}. "
+
     prompt = (
         f"The current weather in {loc} is {description} with a temperature of {temperature}°C.\n"
         f"I am currently at coordinates ({lat}, {lon}). "
         f"Suggest 3 fun or useful things I can do near me in {loc}. Consider the temperature, I do not want to be outside if it is too hot or too cold. "
-        f"Consider {budget_phrase}. You must recommend events or places that are close to the budget provided. It does not have to be free.\n"
+        f"Consider {budget_phrase}. {interests_phrase}"
+        f"You must recommend events or places that are close to the budget provided. It does not have to be free.\n"
         f"For each suggestion, include: "
         f"**Name of Place:** [Name],\n"
         f"**Location:** [Address or general area that Google Maps can understand, e.g., '123 Main St, City, Country'],\n"
         f"**Estimated Travel Time:** [Time],\n"
         f"**Description:** [Description],\n"
-        # to be replaced
-        f"**Website:** google.com\n" 
+        f"**Website:** the website of the event or place (e.g., example.com, www.example.com, https://example.com) If no website, state 'N/A'\n"
         f"**Cost:** [Cost in KRW and USD, e.g., '5,000 KRW / $3.65 USD']\n"
         f"If applicable, please format it into a bulleted list, ensuring each item starts with the name of the place.\n"
     )
     try:
-        model = genai.GenerativeModel(model_name="models/gemini-2.5-pro")
+        model = genai.GenerativeModel(model_name="models/gemini-2.5-flash")
         response = model.generate_content(prompt)
         if hasattr(response, 'text') and isinstance(response.text, str):
             return response.text.strip()
@@ -91,7 +99,7 @@ def get_coordinates(location: str):
     formatted_address = result["formatted_address"]
     return loc["lat"], loc["lng"], formatted_address
 
-#get the coordinates for each 
+
 def get_coordinates_for_recommendations(recommendations: list):
     for item in recommendations:
         location_str = item.get("Location")
@@ -122,10 +130,8 @@ def get_weather(lat: float, lon: float):
 def clean_ai_text(raw_text: str) -> str:
     cleaned_lines = []
     for line in raw_text.splitlines():
-        # Remove leading bullet points and extra spaces
-        cleaned_line = re.sub(r'^\s*[\*\-\+]\s*', '', line)
+        cleaned_line = BULLET_POINT_REGEX.sub('', line)
         cleaned_lines.append(cleaned_line)
-    # Join non-empty lines with double newlines for paragraph separation in HTML later
     cleaned_text = "\n\n".join(line.rstrip() for line in cleaned_lines if line.strip() != "")
     return cleaned_text
 
@@ -139,30 +145,30 @@ def parse_ai_blocks_to_list(text: str) -> list:
         lines = block.strip().splitlines()
         if not lines:
             continue
-        
+
         first_line_is_name = True
-        if re.match(r"\*\*(.+?):\*\*\s*(.+)", lines[0]):
+        if KEY_VALUE_REGEX.match(lines[0]):
             first_line_is_name = False
         else:
-            item["Name of Place"] = re.sub(r'^\s*[\*\-\+]\s*', '', lines[0]).strip()
-            
+            item["Name of Place"] = BULLET_POINT_REGEX.sub('', lines[0]).strip()
+
         for line in lines:
-            match = re.match(r"\*\*(.+?):\*\*\s*(.+)", line)
+            match = KEY_VALUE_REGEX.match(line)
             if match:
                 key = match.group(1).strip()
                 value = match.group(2).strip()
                 item[key] = value
-       
+
         if first_line_is_name and "Name of Place" not in item and lines:
-            item["Name of Place"] = re.sub(r'^\s*[\*\-\+]\s*', '', lines[0]).strip()
+            item["Name of Place"] = BULLET_POINT_REGEX.sub('', lines[0]).strip()
 
         if item:
             results.append(item)
     return results
 
-# Existing JSON endpoint (unchanged)
+#JSON FILE MODE
 @app.get("/weather/json", response_class=JSONResponse)
-def weather_json(loc: str = Query(...), budget_krw: float = Query(0.0)):
+def weather_json(loc: str = Query(...), budget_krw: float = Query(0.0), interests: list[str] = Query([])):
     lat, lon, formatted_address = get_coordinates(loc)
     if lat is None:
         return JSONResponse({"error": "Location not found."}, status_code=404)
@@ -175,7 +181,7 @@ def weather_json(loc: str = Query(...), budget_krw: float = Query(0.0)):
     description = weather_data["weather"][0]["description"]
     humidity = weather_data["main"].get("humidity")
 
-    ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw)
+    ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw, interests)
     ai_tip_clean = clean_ai_text(ai_tip_raw)
     ai_items = parse_ai_blocks_to_list(ai_tip_clean)
     ai_items_with_coords = get_coordinates_for_recommendations(ai_items) # NEW
@@ -194,12 +200,15 @@ def weather_json(loc: str = Query(...), budget_krw: float = Query(0.0)):
         "description": description,
         "humidity": humidity,
         "budget": budget_display,
+        "interests": interests, # Include interests in JSON response
         "ai_parsed": ai_items_with_coords, # Send items with coordinates
         "ai_grouped": group_key_value_objects(ai_items)
     })
 
+
+#
 @app.get("/weather/text", response_class=PlainTextResponse)
-def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0)):
+def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0), interests: list[str] = Query([])):
     lat, lon, formatted_address = get_coordinates(loc)
     if lat is None:
         return PlainTextResponse("Error: Location not found.", status_code=404)
@@ -212,7 +221,7 @@ def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0)):
     description = weather_data["weather"][0]["description"]
     humidity = weather_data["main"].get("humidity")
 
-    ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw)
+    ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw, interests)
     ai_tip_clean = clean_ai_text(ai_tip_raw)
 
     budget_display = "Any"
@@ -222,6 +231,8 @@ def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0)):
             budget_usd = budget_krw * EXCHANGE_RATE_KRW_TO_USD
             budget_display += f" (approx. ${budget_usd:,.2f} USD)"
 
+    interests_display = ", ".join(interests) if interests else "None"
+
     response_text = (
         f"Weather Report for {formatted_address}\n"
         f"-----------------------------------\n"
@@ -229,7 +240,8 @@ def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0)):
         f"Temperature: {temperature}°C\n"
         f"Description: {description}\n"
         f"Humidity: {humidity}%\n"
-        f"Budget Considered: {budget_display}\n\n"
+        f"Budget Considered: {budget_display}\n"
+        f"Interests: {interests_display}\n\n" # Include interests in text response
         f"AI Recommendations:\n"
         f"---------------------\n"
         f"{ai_tip_clean}"
@@ -240,6 +252,7 @@ def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0)):
 def weather(
     loc: str = Query(..., example="1600 Amphitheatre Parkway, Mountain View, CA"),
     budget_krw: float = Query(0.0, description="Budget for recommendations in South Korean Won (KRW). Use 0 for any budget."),
+    interests: list[str] = Query([], description="A comma-separated list of interests (e.g., 'museums,food,parks')."),
     save_to_file: bool = Query(False, description="Set to true to save the report to a local HTML file.")
 ):
     lat, lon, formatted_address = get_coordinates(loc)
@@ -260,14 +273,13 @@ def weather(
         logger.error(f"Missing weather key: {str(e)}")
         return HTMLResponse(f"<h3>Weather data incomplete: Missing key {str(e)}</h3>")
 
-    ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw)
+    ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw, interests)
     ai_tip = clean_ai_text(ai_tip_raw)
     formatted_tip = ai_tip.replace("\n", "<br>")
 
-    ai_items = parse_ai_blocks_to_list(ai_tip_raw) # Use raw AI tip for parsing structure
+    ai_items = parse_ai_blocks_to_list(ai_tip_raw) 
     ai_items_with_coords = get_coordinates_for_recommendations(ai_items)
 
-    # Prepare marker data for JavaScript
     markers_js_array = []
     for item in ai_items_with_coords:
         if "lat" in item and "lon" in item:
@@ -276,9 +288,8 @@ def weather(
             description_text = item.get("Description", "No description available.")
             travel_time = item.get("Estimated Travel Time", "N/A")
             cost = item.get("Cost", "N/A")
-            website = item.get("Website", "#") # Default to '#' for website if not available
-
-            # Create content for the info window
+            website = item.get("Website", "N/A") # exception handle 
+            
             info_content = (
                 f"<b>{name}</b><br>"
                 f"Location: {location}<br>"
@@ -286,12 +297,21 @@ def weather(
                 f"Cost: {cost}<br>"
                 f"Description: {description_text}<br>"
             )
-            # Ensure website is a valid URL before linking
-            if website != "#" and website.startswith(("http://", "https://")):
-                info_content += f"<a href='{website}' target='_blank'>Website</a>"
-            elif website != "#" and not website.startswith(("http://", "https://")):
-                 # If website is provided but missing protocol, try to prepend
-                 info_content += f"<a href='https://{website}' target='_blank'>Website</a>"
+            
+            
+            if website and website != "N/A" and website.strip(): 
+                cleaned_website = URL_PROTOCOL_REGEX.sub('', website).strip()
+                
+       
+                if not cleaned_website.startswith("www.") and "." in cleaned_website:
+                    # Avoid adding www. to things that are clearly not domains (e.g., "example")
+                    if len(cleaned_website.split('.')) > 1 and len(cleaned_website.split('.')[-1]) <= 5: # Basic TLD check
+                        cleaned_website = f"www.{cleaned_website}"
+                
+                final_website_url = f"https://{cleaned_website}"
+                info_content += f"<a href='{final_website_url}' target='_blank'>Website</a>"
+            else:
+                info_content += "Website: N/A"
 
 
             markers_js_array.append({
@@ -316,9 +336,10 @@ def weather(
     else:
         budget_display = "Any"
 
-    # Conditionally include the raw AI response section
+    interests_display = ", ".join(interests) if interests else "None"
+
     raw_ai_section = ""
-    if save_to_file: # Only include raw AI response if saving to file
+    if save_to_file: 
         raw_ai_section = f"""
         <h3>Raw Gemini AI Response</h3>
         <pre>{ai_tip_raw}</pre>
@@ -345,6 +366,7 @@ def weather(
         <p><b>Temperature:</b> {temperature}°C</p>
         <p><b>Description:</b> {description}</p>
         <p><b>Humidity:</b> {humidity}%</p>
+        <p><b>Interests:</b> {interests_display}</p>
         <h3>AI Recommendations (Budget: {budget_display})</h3>
         <p>{formatted_tip}</p>
 
@@ -394,8 +416,8 @@ def weather(
                 // Add markers for recommendations
                 MARKERS.forEach((data, index) => {{
                     // The last marker in MARKERS is the current location, skip it for recommendations loop
-                    if (index === MARKERS.length - 1 && data.title === "Your Current Location") return; 
-                    
+                    if (index === MARKERS.length - 1 && data.title === "Your Current Location") return;
+
                     const marker = new AdvancedMarkerElement({{
                         map: map,
                         position: data.position,
@@ -432,7 +454,7 @@ def weather(
     </body>
     </html>
     """
-    
+
     # This is the corrected and consolidated save_to_file logic
     if save_to_file:
         SAVE_DIRECTORY.mkdir(parents=True, exist_ok=True)
