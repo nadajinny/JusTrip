@@ -74,3 +74,62 @@ h1 {
   align-items: center;
   font-size: 18px;
 }
+
+/* Section 3 스타일 */
+.section3-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.place-name-box {
+  text-align: center;
+}
+
+.place-name-box h2 {
+  font-size: 32px;
+  color: #333;
+}
+
+.place-name-box a {
+  display: inline-block;
+  margin-top: 5px;
+  color: #1a73e8;
+  text-decoration: underline;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin: 20px auto;
+  max-width: 800px;
+}
+
+.info-bubble {
+  border: 2px solid #7AC584;
+  border-radius: 25px;
+  padding: 15px;
+  background-color: #f9fff9;
+}
+
+.info-bubble h4 {
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.scroll-box {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 2px dashed #ccc;
+  padding: 15px;
+  margin: 20px auto;
+  max-width: 600px;
+  background-color: #f0f0f0;
+  border-radius: 10px;
+}
+
+.scroll-box ul {
+  list-style-type: disc;
+  padding-left: 20px;
+}

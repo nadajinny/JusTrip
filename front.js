@@ -51,12 +51,40 @@ function openPlaceInput() {
   input.focus();
 }
 
+function openInterestInput() {
+  const button = document.getElementById("interestButton");
+  const input = document.createElement("input");
+
+  input.type = "text";
+  input.id = "interestInput";
+  input.placeholder = "Enter interest";
+  input.className = "input-button";
+  input.style.width = "220px";
+
+  input.addEventListener("blur", () => {
+    const interestValue = input.value.trim();
+    document.getElementById("hiddenInterest").value = interestValue;
+
+    const newButton = document.createElement("button");
+    newButton.innerText = interestValue || "Select interest";
+    newButton.className = "input-button";
+    newButton.id = "interestButton";
+    newButton.onclick = openInterestInput;
+
+    input.parentNode.replaceChild(newButton, input);
+  });
+
+  button.parentNode.replaceChild(input, button);
+  input.focus();
+}
+
 function goToSection2() {
   const date = document.getElementById("hiddenDate").value;
   const place = document.getElementById("hiddenPlace").value;
+  const interest = document.getElementById("hiddenInterest").value;
 
-  if (!date || !place) {
-    alert("Please select both date and place.");
+  if (!date || !place || !interest) {
+    alert("Please select date, place, and interest.");
     return;
   }
 
@@ -65,15 +93,13 @@ function goToSection2() {
 }
 
 function backToSection1() {
-  // Section2 숨기고 Section1 다시 보여주기
   document.getElementById("section2").classList.remove("active");
   document.getElementById("section1").classList.add("active");
 
-  // 👉 선택사항: 입력 초기화 (필요하면 사용)
   document.getElementById("hiddenDate").value = "";
   document.getElementById("hiddenPlace").value = "";
+  document.getElementById("hiddenInterest").value = "";
 
-  // 날짜 버튼 초기화
   const dateButton = document.createElement("button");
   dateButton.className = "input-button";
   dateButton.id = "dateButton";
@@ -82,7 +108,6 @@ function backToSection1() {
   const dateParent = document.getElementById("dateButton").parentNode;
   dateParent.replaceChild(dateButton, document.getElementById("dateButton"));
 
-  // 장소 버튼 초기화
   const placeButton = document.createElement("button");
   placeButton.className = "input-button";
   placeButton.id = "placeButton";
@@ -90,4 +115,12 @@ function backToSection1() {
   placeButton.onclick = openPlaceInput;
   const placeParent = document.getElementById("placeButton").parentNode;
   placeParent.replaceChild(placeButton, document.getElementById("placeButton"));
+
+  const interestButton = document.createElement("button");
+  interestButton.className = "input-button";
+  interestButton.id = "interestButton";
+  interestButton.innerText = "Select interest";
+  interestButton.onclick = openInterestInput;
+  const interestParent = document.getElementById("interestButton").parentNode;
+  interestParent.replaceChild(interestButton, document.getElementById("interestButton"));
 }

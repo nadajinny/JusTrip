@@ -1,0 +1,11 @@
+<div id="nameBox"></div>
+<div id="locationBox"></div>
+<script>
+fetch("/weather/json?loc=Seoul")
+  .then(res => res.json())
+  .then(data => {
+    const rec = data.ai_recommendation;
+    document.getElementById("nameBox").innerText = rec["Name"];
+    document.getElementById("locationBox").innerText = rec["Location"];
+  });
+</script>

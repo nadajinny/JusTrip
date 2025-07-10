@@ -1,0 +1,7 @@
+data.txt (AI 생성 텍스트를 .txt 파일로 저장)
+   ↓
+JS에서 fetch로 파일 읽기()
+   ↓
+parseMarkdownKeyValue()로 정제 (refine_data 생성)
+   ↓
+특정 키값(ex. Name)만 HTML 요소에 표시
