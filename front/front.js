@@ -51,17 +51,41 @@ function openPlaceInput() {
   input.focus();
 }
 
-function goToSection2() {
-  const date = document.getElementById("hiddenDate").value;
-  const place = document.getElementById("hiddenPlace").value;
-
-  if (!date || !place) {
-    alert("Please select both date and place.");
+async function goToSection2() {
+  const place = document.getElementById("placeInput").value.trim();
+  if (!place) {
+    alert("Please enter a place.");
     return;
   }
 
-  document.getElementById("section1").classList.remove("active");
-  document.getElementById("section2").classList.add("active");
+  const encodedPlace = encodeURIComponent(place);
+
+  try {
+    const response = await fetch(`/weather/places?loc=${encodedPlace}`);
+    const data = await response.json();
+
+    if (!data.places || data.places.length === 0) {
+      alert("추천 장소가 없습니다.");
+      return;
+    }
+
+    const container = document.getElementById("recommendationContainer");
+    container.innerHTML = "";
+
+    data.places.forEach((name) => {
+      const div = document.createElement("div");
+      div.classList.add("card");
+      div.innerText = "📍 " + name.replace(/\*\*/g, ""); // ** 마크다운 제거
+      container.appendChild(div);
+    });
+
+    // 섹션 전환
+    document.getElementById("section1").classList.remove("active");
+    document.getElementById("section2").classList.add("active");
+  } catch (error) {
+    console.error("Error:", error);
+    alert("장소 추천을 불러오지 못했습니다.");
+  }
 }
 
 function backToSection1() {
