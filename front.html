@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JusTrip</title>
+  <link rel="stylesheet" href="front.css" />
+</head>
+<body>
+
+  <!-- Section 1 -->
+  <div id="section1" class="section active">
+    <h1><span class="bold">Jus</span><span class="green">Trip</span></h1>
+    <div class="input-row">
+      <button class="input-button" id="dateButton" onclick="openDatePicker()">Select date</button>
+      <button class="input-button" id="placeButton" onclick="openPlaceInput()">Select place</button>
+    </div>
+    <button class="go-button" onclick="goToSection2()">Let's GO</button>
+    <input type="hidden" id="hiddenDate" />
+    <input type="hidden" id="hiddenPlace" />
+  </div>
+
+  <!-- Section 2 -->
+  <div id="section2" class="section">
+    <h1><span class="bold">Jus</span><span class="green">Trip</span></h1>
+    <div class="recommendations">
+      <div class="card">📍 Place 1</div>
+      <div class="card">📍 Place 2</div>
+      <div class="card">📍 Place 3</div>
+    </div>
+    <button class="go-button">Optimum Route</button><br><br>
+    <button class="go-button" onclick="backToSection1()">Other Recommendations</button>
+  </div>
+
+  <script src="front.js"></script>
+</body>
+</html>
