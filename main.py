@@ -1,6 +1,4 @@
-#imports
-
-
+# imports
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse, PlainTextResponse
 import os
@@ -8,14 +6,16 @@ import requests
 from dotenv import load_dotenv
 import google.generativeai as genai
 import re
+import logging
 
-#----------------------------------------------------------
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-#load environment
 load_dotenv()
 
-#fastAPI call 
+# fastAPI app instance
 app = FastAPI()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
@@ -27,7 +27,7 @@ if not all([GOOGLE_API_KEY, WEATHER_API_KEY, GEMINI_API_KEY]):
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-def get_ai_recommendation(loc: str, description: str, temperature: float, lat: float, lon: float, budget:int) -> str:
+def get_ai_recommendation(loc: str, description: str, temperature: float, lat: float, lon: float) -> str:
     prompt = (
         f"The current weather in {loc} is {description} with a temperature of {temperature}°C.\n"
         f"I am currently at coordinates ({lat}, {lon}). "
@@ -43,12 +43,9 @@ def get_ai_recommendation(loc: str, description: str, temperature: float, lat: f
         else:
             return "AI response missing or not in expected format."
     except Exception as e:
+        logger.error(f"AI error: {str(e)}")
         return f"AI error: {str(e)}"
 
-
-
-
-#formatted address 
 def get_coordinates(location: str):
     url = "https://maps.googleapis.com/maps/api/geocode/json"
     params = {"address": location, "key": GOOGLE_API_KEY}
@@ -71,7 +68,9 @@ def get_weather(lat: float, lon: float):
         "lang": "en"
     }
     response = requests.get(url, params=params)
-    return response.json()
+    data = response.json()
+    logger.info(f"Weather API raw response: {data}")
+    return data
 
 def clean_ai_text(raw_text: str) -> str:
     cleaned_lines = []
@@ -88,12 +87,18 @@ def weather(loc: str = Query(..., example="1600 Amphitheatre Parkway, Mountain V
         return "<h3>Location not found in Google Maps API.</h3>"
 
     weather_data = get_weather(lat, lon)
+
+    if weather_data.get("cod") != 200:
+        message = weather_data.get("message", "Unknown error")
+        return f"<h3>Weather API error: {message}</h3>"
+
     try:
         temperature = weather_data["main"]["temp"]
         description = weather_data["weather"][0]["description"]
         humidity = weather_data["main"]["humidity"]
-    except KeyError:
-        return "<h3>Weather data incomplete or not found.</h3>"
+    except KeyError as e:
+        logger.error(f"Missing weather key: {str(e)}")
+        return f"<h3>Weather data incomplete: Missing key {str(e)}</h3>"
 
     ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon)
     ai_tip = clean_ai_text(ai_tip_raw)
@@ -115,11 +120,18 @@ def weather_text(loc: str = Query(...)):
         return "Location not found."
 
     weather_data = get_weather(lat, lon)
+
+    if weather_data.get("cod") != 200:
+        message = weather_data.get("message", "Unknown error")
+        return f"Weather API error: {message}"
+
     try:
         temperature = weather_data["main"]["temp"]
         description = weather_data["weather"][0]["description"]
-    except KeyError:
-        return "Weather data not found."
+    except KeyError as e:
+        logger.error(f"Missing weather key: {str(e)}")
+        return f"Weather data incomplete: Missing key {str(e)}"
+
     ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon)
     ai_tip = clean_ai_text(ai_tip_raw)
 
