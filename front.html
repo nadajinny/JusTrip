@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- Section 1 -->
+  <!-- Section 1: 날짜 및 장소 입력 -->
   <div id="section1" class="section active">
     <h1><span class="bold">Jus</span><span class="green">Trip</span></h1>
     <div class="input-row">
@@ -20,51 +20,50 @@
     <input type="hidden" id="hiddenPlace" />
   </div>
 
-  <!-- Section 2 -->
+  <!-- Section 2: 추천 카드 목록 -->
   <div id="section2" class="section">
     <h1><span class="bold">Jus</span><span class="green">Trip</span></h1>
-    <div class="recommendations">
-      <div class="card">📍 Place 1</div>
-      <div class="card">📍 Place 2</div>
-      <div class="card">📍 Place 3</div>
-    </div>
+    <div class="recommendations"></div>  <!-- 여기에 카드가 동적으로 삽입됨 -->
     <button class="go-button">Optimum Route</button><br><br>
     <button class="go-button" onclick="backToSection1()">Other Recommendations</button>
   </div>
 
-<!-- Section 3 -->
-<div id="section3" class="section">
- <!-- Section 3 전체 내용 감싸기 (스크롤 영역) -->
-<div class="scroll-container">
-  <div class="section3-upper">
-    <div class="left-box">
-      <h2 id="placeName">Place Name</h2>
-      <a id="placeLink" href="#" target="_blank">Visit Website</a>
+
+  <!-- Section 3: 상세 정보 -->
+  <div id="section3" class="section">
+    <div class="scroll-container">
+      <div class="section3-upper">
+        <div class="left-box">
+          <h2 id="placeName">Place Name</h2>
+          <a id="placeLink" href="#" target="_blank">Visit Website</a>
+        </div>
+        <div class="right-box">
+          <div class="info-bubble"><h4>📍 Location</h4><p id="locationInfo"></p></div>
+          <div class="info-bubble"><h4>🕒 Time to Travel</h4><p id="timeInfo"></p></div>
+          <div class="info-bubble"><h4>📘 Reason</h4><p id="reasonInfo"></p></div>
+          <div class="info-bubble"><h4>🌐 Website</h4><p id="websiteInfo"></p></div>
+          <div class="info-bubble"><h4>💰 Cost</h4><p id="costInfo"></p></div>
+          <div class="info-bubble"><h4>₩ KRW</h4><p id="krwInfo"></p></div>
+          <div class="info-bubble"><h4>$ USD</h4><p id="usdInfo"></p></div>
+          <div class="info-bubble"><h4>👕 Clothes</h4><p id="clothesInfo"></p></div>
+          <div class="info-bubble"><h4>🎒 Essentials</h4><p id="itemsInfo"></p></div>
+        </div>
+      </div>
+
+      <div class="button-box">
+        <button class="go-button" onclick="backToSection1()">Back</button>
+      </div>
     </div>
-    <div class="right-box">
-  <div class="info-bubble"><h4>📍 Location</h4><p id="locationInfo">-</p></div>
-  <div class="info-bubble"><h4>🕒 Time to Travel</h4><p id="timeInfo">-</p></div>
-  <div class="info-bubble"><h4>📘 Reason</h4><p id="reasonInfo">-</p></div>
-  <div class="info-bubble"><h4>🌐 Website</h4><p id="websiteInfo">-</p></div>
-  <div class="info-bubble"><h4>💰 Cost</h4><p id="costInfo">-</p></div>
-  <div class="info-bubble"><h4>₩ KRW</h4><p id="krwInfo">-</p></div>
-  <div class="info-bubble"><h4>$ USD</h4><p id="usdInfo">-</p></div>
-  <div class="info-bubble"><h4>👕 Clothes</h4><p id="clothesInfo">-</p></div>
-  <div class="info-bubble"><h4>🎒 Essentials</h4><p id="itemsInfo">-</p></div>
-</div>
-
   </div>
 
-  <div class="button-box">
-    <button class="go-button" onclick="backToSection1()">Back</button>
-  </div>
-</div>
+      <!-- Section 3: Map View -->
+    <div id="section4" class="section">
+    <h1><span class="bold">Optimum</span><span class="green">Route</span></h1>
+    <div id="map" style="width: 100%; height: 500px; margin-top: 20px;"></div>
+    <button class="go-button" onclick="backToSection2()">Back</button>
+    </div>
 
-</div>
-
-
+    
   <script src="front.js"></script>
-
-  
 </body>
 </html>
