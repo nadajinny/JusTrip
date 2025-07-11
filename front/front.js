@@ -75,7 +75,7 @@ async function goToSection2() {
     data.places.forEach((name) => {
       const div = document.createElement("div");
       div.classList.add("card");
-      div.innerText = "📍 " + name.replace(/\*\*/g, ""); // ** 마크다운 제거
+      div.innerText = "📍 " + name.replace(/\*\*/g, "").replace(/^#+\s*/, ""); // ** 마크다운 제거
       container.appendChild(div);
     });
 
@@ -89,29 +89,5 @@ async function goToSection2() {
 }
 
 function backToSection1() {
-  // Section2 숨기고 Section1 다시 보여주기
-  document.getElementById("section2").classList.remove("active");
-  document.getElementById("section1").classList.add("active");
-
-  // 👉 선택사항: 입력 초기화 (필요하면 사용)
-  document.getElementById("hiddenDate").value = "";
-  document.getElementById("hiddenPlace").value = "";
-
-  // 날짜 버튼 초기화
-  const dateButton = document.createElement("button");
-  dateButton.className = "input-button";
-  dateButton.id = "dateButton";
-  dateButton.innerText = "Select date";
-  dateButton.onclick = openDatePicker;
-  const dateParent = document.getElementById("dateButton").parentNode;
-  dateParent.replaceChild(dateButton, document.getElementById("dateButton"));
-
-  // 장소 버튼 초기화
-  const placeButton = document.createElement("button");
-  placeButton.className = "input-button";
-  placeButton.id = "placeButton";
-  placeButton.innerText = "Select place";
-  placeButton.onclick = openPlaceInput;
-  const placeParent = document.getElementById("placeButton").parentNode;
-  placeParent.replaceChild(placeButton, document.getElementById("placeButton"));
+  goToSection2();
 }
