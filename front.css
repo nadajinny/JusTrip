@@ -75,61 +75,107 @@ h1 {
   font-size: 18px;
 }
 
-/* Section 3 스타일 */
-.section3-header {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
+#section3 {
+  display: none;
 }
 
-.place-name-box {
+.section.active {
+  display: block;
+}
+
+.section3-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+}
+
+.section3-upper {
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.left-box {
+  min-width: 200px;
   text-align: center;
 }
 
-.place-name-box h2 {
-  font-size: 32px;
-  color: #333;
+.left-box h2 {
+  font-size: 28px;
+  margin-bottom: 10px;
+  border: 2px solid #7AC584;
+  padding: 20px;
+  border-radius: 12px;
 }
 
-.place-name-box a {
+.left-box a {
   display: inline-block;
-  margin-top: 5px;
-  color: #1a73e8;
-  text-decoration: underline;
+  padding: 10px;
+  border: 2px solid #64c2f0;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #0077cc;
+  margin-top: 10px;
 }
 
-.info-grid {
+.right-box {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-  margin: 20px auto;
-  max-width: 800px;
+  grid-template-columns: repeat(2, 200px);
+  gap: 20px;
 }
 
 .info-bubble {
   border: 2px solid #7AC584;
-  border-radius: 25px;
+  border-radius: 50px;
   padding: 15px;
-  background-color: #f9fff9;
+  background-color: #f6fff6;
+  text-align: center;
 }
 
-.info-bubble h4 {
-  margin-bottom: 6px;
-  color: #333;
+
+.button-box {
+  margin-top: 30px;
 }
 
-.scroll-box {
-  max-height: 160px;
+#section3.section.active {
+  display: block !important;
+}
+
+.scroll-wrapper {
+  max-height: 90vh;
   overflow-y: auto;
-  border: 2px dashed #ccc;
-  padding: 15px;
-  margin: 20px auto;
-  max-width: 600px;
-  background-color: #f0f0f0;
-  border-radius: 10px;
+  padding: 10px;
+  margin: auto;
+  width: 120%;
+  box-sizing: border-box;
 }
 
-.scroll-box ul {
-  list-style-type: disc;
-  padding-left: 20px;
+/* section3 전체를 감싸는 스크롤 컨테이너 */
+.scroll-container {
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 30px;
 }
+
+/* 기존 info-bubble과 동일하게 보이도록 유지 */
+.info-bubble {
+  border: 2px solid #7AC584;
+  border-radius: 50px;
+  padding: 15px;
+  background-color: #f6fff6;
+  text-align: center;
+  width: 200px;
+}
+
+/* info-bubble 그리드 형태 */
+.right-box {
+  display: grid;
+  grid-template-columns: repeat(3, 200px);
+  gap: 20px;
+  justify-content: center;
+}
+
+
