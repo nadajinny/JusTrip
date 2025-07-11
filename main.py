@@ -8,7 +8,7 @@ import re
 import logging
 from pathlib import Path
 from datetime import datetime
-import json 
+import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,7 +31,6 @@ if not all([GOOGLE_API_KEY, WEATHER_API_KEY, GEMINI_API_KEY]):
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Helper function to escape HTML special characters
 def html_escape(text):
     if text is None:
         return ''
@@ -68,18 +67,22 @@ def get_ai_recommendation(loc: str, description: str, temperature: float, lat: f
         f"- `website`: (string) The official website URL (e.g., '[https://example.com](https://example.com)'). If no website, use 'N/A'.\n"
         f"- `cost_krw`: (number) Estimated cost in KRW. Use 0 for free. If unknown, use 0.\n"
         f"- `cost_usd`: (number) Estimated cost in USD. Use 0 for free. If unknown, use 0.\n"
+        f"- `recommended_clothing`: (string) Specific clothing recommendation for this location/activity based on weather (e.g., 'Light t-shirt and shorts', 'Warm jacket and gloves').\n"
+        f"- `recommended_essentials`: (string) Specific essential items for this location/activity (e.g., 'sunscreen, hat, water bottle', 'umbrella, comfortable walking shoes').\n"
         f"Ensure the cost fields are numeric. If the cost is a range, provide a reasonable average or the lower end.\n"
         f"Example JSON structure:\n"
         f"```json\n"
         f"[\n"
         f"  {{\n"
-        f'    "name": "Example Museum",\n'
-        f'    "location": "123 Museum St, Gwangju, South Korea",\n'
-        f'    "travel_time": "15 minutes by bus",\n'
-        f'    "description": "A great museum with various exhibits.",\n'
-        f'    "website": "https://www.examplemuseum.com",\n'
-        f'    "cost_krw": 10000,\n'
-        f'    "cost_usd": 7.30\n'
+        f'    "name": "Gwangju National Museum",\n'
+        f'    "location": "110 Hanam-daero, Buk-gu, Gwangju, South Korea",\n'
+        f'    "travel_time": "20 minutes by bus",\n'
+        f'    "description": "Explore historical artifacts and cultural exhibits.",\n'
+        f'    "website": "[https://gwangju.museum.go.kr](https://gwangju.museum.go.kr)",\n'
+        f'    "cost_krw": 0,\n'
+        f'    "cost_usd": 0,\n'
+        f'    "recommended_clothing": "Casual clothes, comfortable walking shoes",\n'
+        f'    "recommended_essentials": "Water bottle, camera"\n'
         f"  }}\n"
         f"]\n"
         f"```\n"
@@ -89,11 +92,10 @@ def get_ai_recommendation(loc: str, description: str, temperature: float, lat: f
         model = genai.GenerativeModel(model_name="models/gemini-2.5-flash")
         response = model.generate_content(prompt)
         if hasattr(response, 'text') and isinstance(response.text, str):
-            # Attempt to extract JSON from a markdown code block if present
             json_match = re.search(r'```json\s*(.*?)\s*```', response.text.strip(), re.DOTALL)
             if json_match:
-                return json_match.group(1).strip() # Return only the JSON content
-            return response.text.strip() # Fallback if no markdown block (model might just output raw JSON)
+                return json_match.group(1).strip()
+            return response.text.strip()
         else:
             return "AI response missing or not in expected format."
     except Exception as e:
@@ -102,8 +104,7 @@ def get_ai_recommendation(loc: str, description: str, temperature: float, lat: f
 
 
 def get_coordinates(location: str):
-    # REMOVE THE MARKDOWN LINK SYNTAX
-    url = "https://maps.googleapis.com/maps/api/geocode/json" # Corrected
+    url = "https://maps.googleapis.com/maps/api/geocode/json"
     params = {"address": location, "key": GOOGLE_API_KEY}
     response = requests.get(url, params=params)
     data = response.json()
@@ -116,8 +117,7 @@ def get_coordinates(location: str):
 
 
 def get_weather(lat: float, lon: float):
-    # REMOVE THE MARKDOWN LINK SYNTAX
-    url = "https://api.openweathermap.org/data/2.5/weather" # Corrected
+    url = "https://api.openweathermap.org/data/2.5/weather"
     params = {
         "lat": lat,
         "lon": lon,
@@ -129,7 +129,6 @@ def get_weather(lat: float, lon: float):
     data = response.json()
     logger.info(f"Weather API raw response: {data}")
     return data
-
 
 
 def get_coordinates_for_recommendations(recommendations: list):
@@ -145,29 +144,21 @@ def get_coordinates_for_recommendations(recommendations: list):
     return recommendations
 
 
-
-
-# --- NEW/REVISED: parse_ai_json_to_list ---
-def parse_ai_json_to_list(json_string: str) -> list:
-    """
-    Parses a JSON string from the AI into a list of structured dictionaries.
-    Handles potential preamble/postamble and ensures valid JSON parsing.
-    """
+def parse_ai_response(json_string: str) -> list:
     try:
         json_match = re.search(r'```json\s*(.*?)\s*```', json_string, re.DOTALL)
         if json_match:
             json_content = json_match.group(1)
         else:
-            json_content = json_string # Assume it's just the JSON string
+            json_content = json_string
 
         parsed_data = json.loads(json_content)
         if not isinstance(parsed_data, list):
             logger.warning(f"AI response is not a JSON list: {parsed_data}. Attempting to wrap.")
-            # If AI returns a single object but expects a list, wrap it
             if isinstance(parsed_data, dict):
                 parsed_data = [parsed_data]
             else:
-                return [] 
+                return []
 
         standardized_items = []
         for item in parsed_data:
@@ -179,10 +170,11 @@ def parse_ai_json_to_list(json_string: str) -> list:
                 "Website": item.get("website", "N/A"),
                 "Cost_KRW": item.get("cost_krw", 0.0),
                 "Cost_USD": item.get("cost_usd", 0.0),
-                "lat": None, # Will be filled by get_coordinates_for_recommendations
-                "lon": None  # Will be filled by get_coordinates_for_recommendations
+                "Recommended_Clothing": item.get("recommended_clothing", "N/A"),
+                "Recommended_Essentials": item.get("recommended_essentials", "N/A"),
+                "lat": None,
+                "lon": None
             }
-            # Ensure website starts with http/https if not N/A
             if standardized_item["Website"] != "N/A" and standardized_item["Website"].strip():
                 if not URL_PROTOCOL_REGEX.match(standardized_item["Website"]):
                     standardized_item["Website"] = "https://" + standardized_item["Website"]
@@ -191,10 +183,9 @@ def parse_ai_json_to_list(json_string: str) -> list:
         return standardized_items
     except json.JSONDecodeError as e:
         logger.error(f"Failed to decode JSON from AI response: {e}. Raw response: {json_string}")
-        # Try to clean the string and retry for common issues (e.g., trailing commas, comments)
-        cleaned_json_string = re.sub(r',\s*}', '}', json_string) # Remove trailing commas before }
-        cleaned_json_string = re.sub(r',\s*]', ']', cleaned_json_string) # Remove trailing commas before ]
-        cleaned_json_string = re.sub(r'//.*?\n|/\*.*?\*/', '', cleaned_json_string, flags=re.DOTALL) # Remove comments
+        cleaned_json_string = re.sub(r',\s*}', '}', json_string)
+        cleaned_json_string = re.sub(r',\s*]', ']', cleaned_json_string)
+        cleaned_json_string = re.sub(r'//.*?\n|/\*.*?\*/', '', cleaned_json_string, flags=re.DOTALL)
         try:
             parsed_data = json.loads(cleaned_json_string)
             if not isinstance(parsed_data, list):
@@ -212,6 +203,8 @@ def parse_ai_json_to_list(json_string: str) -> list:
                     "Website": item.get("website", "N/A"),
                     "Cost_KRW": item.get("cost_krw", 0.0),
                     "Cost_USD": item.get("cost_usd", 0.0),
+                    "Recommended_Clothing": item.get("recommended_clothing", "N/A"),
+                    "Recommended_Essentials": item.get("recommended_essentials", "N/A"),
                     "lat": None,
                     "lon": None
                 }
@@ -228,7 +221,6 @@ def parse_ai_json_to_list(json_string: str) -> list:
         return []
 
 
-# JSON FILE MODE
 @app.get("/weather/json", response_class=JSONResponse)
 def weather_json(loc: str = Query(...), budget_krw: float = Query(0.0), interests: list[str] = Query([])):
     lat, lon, formatted_address = get_coordinates(loc)
@@ -244,8 +236,7 @@ def weather_json(loc: str = Query(...), budget_krw: float = Query(0.0), interest
     humidity = weather_data["main"].get("humidity")
 
     ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw, interests)
-    # The ai_tip_raw is now expected to be JSON.
-    ai_items = parse_ai_json_to_list(ai_tip_raw)
+    ai_items = parse_ai_response(ai_tip_raw)
     ai_items_with_coords = get_coordinates_for_recommendations(ai_items)
 
     budget_display = "Any"
@@ -267,7 +258,6 @@ def weather_json(loc: str = Query(...), budget_krw: float = Query(0.0), interest
     })
 
 
-#HYPER-TEXT MODE (OFFLINE SAVE)
 @app.get("/weather/text", response_class=PlainTextResponse)
 def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0), interests: list[str] = Query([])):
     lat, lon, formatted_address = get_coordinates(loc)
@@ -283,11 +273,7 @@ def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0), interest
     humidity = weather_data["main"].get("humidity")
 
     ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw, interests)
-    # For plain text, we'll just display the raw JSON (or an error if parsing fails)
-    # Or, if you want a more human-readable text output, you'd need to format ai_items
-    # after parsing them with `parse_ai_json_to_list`.
-    # For now, let's keep it simple and show the raw AI output (which should be JSON)
-    # if it's the plain text endpoint.
+    ai_items = parse_ai_response(ai_tip_raw)
 
     budget_display = "Any"
     if budget_krw > 0:
@@ -298,6 +284,33 @@ def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0), interest
 
     interests_display = ", ".join(interests) if interests else "None"
 
+    recommendations_text = ""
+    for item in ai_items:
+        cost_display = ""
+        cost_krw_val = item.get("Cost_KRW", 0.0)
+        cost_usd_val = item.get("Cost_USD", 0.0)
+        if cost_krw_val > 0:
+            cost_display += f"{cost_krw_val:,.0f} KRW"
+        if cost_usd_val > 0:
+            if cost_display:
+                cost_display += " / "
+            cost_display += f"${cost_usd_val:,.2f} USD"
+        if not cost_display and cost_krw_val == 0 and cost_usd_val == 0:
+             cost_display = "Free"
+        if not cost_display:
+            cost_display = "N/A"
+
+        recommendations_text += (
+            f"  - Name: {item.get('Name of Place', 'N/A')}\n"
+            f"    Location: {item.get('Location', 'N/A')}\n"
+            f"    Travel Time: {item.get('Estimated Travel Time', 'N/A')}\n"
+            f"    Description: {item.get('Description', 'N/A')}\n"
+            f"    Website: {item.get('Website', 'N/A')}\n"
+            f"    Cost: {cost_display}\n"
+            f"    Recommended Clothing: {item.get('Recommended_Clothing', 'N/A')}\n"
+            f"    Recommended Essentials: {item.get('Recommended_Essentials', 'N/A')}\n\n"
+        )
+
     response_text = (
         f"Weather Report for {formatted_address}\n"
         f"-----------------------------------\n"
@@ -307,14 +320,13 @@ def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0), interest
         f"Humidity: {humidity}%\n"
         f"Budget Considered: {budget_display}\n"
         f"Interests: {interests_display}\n\n"
-        f"AI Recommendations (Raw JSON):\n"
+        f"AI Recommendations:\n"
         f"-------------------------------\n"
-        f"{ai_tip_raw}\n"
+        f"{recommendations_text}"
     )
     return PlainTextResponse(response_text)
 
 
-#HTML MODE
 @app.get("/weather", response_class=HTMLResponse)
 def weather(
     loc: str = Query(..., example="1600 Amphitheatre Parkway, Mountain View, CA"),
@@ -341,17 +353,18 @@ def weather(
         return HTMLResponse(f"<h3>Weather data incomplete: Missing key {str(e)}</h3>")
 
     ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw, interests)
-    # Parse the AI's JSON output
-    ai_items = parse_ai_json_to_list(ai_tip_raw)
+    ai_items = parse_ai_response(ai_tip_raw)
     ai_items_with_coords = get_coordinates_for_recommendations(ai_items)
 
     markers_js_array = []
     for item in ai_items_with_coords:
         if "lat" in item and "lon" in item:
-            name = item.get("Name of Place", "Unknown Place") # Using the standardized keys
+            name = item.get("Name of Place", "Unknown Place")
             location = item.get("Location", "Unknown Location")
             description_text = item.get("Description", "No description available.")
             travel_time = item.get("Estimated Travel Time", "N/A")
+            recommended_clothing = item.get("Recommended_Clothing", "N/A")
+            recommended_essentials = item.get("Recommended_Essentials", "N/A")
 
             cost_krw_val = item.get("Cost_KRW", 0.0)
             cost_usd_val = item.get("Cost_USD", 0.0)
@@ -363,10 +376,9 @@ def weather(
             if cost_usd_val > 0:
                 cost_parts.append(f"${cost_usd_val:,.2f} USD")
             cost_display = " / ".join(cost_parts) if cost_parts else "N/A"
-            # If both costs are 0, check if the original AI output for cost indicated "Free"
-            # This is a bit of a fallback, better if AI provides 0 for free.
-            if cost_krw_val == 0 and cost_usd_val == 0 and any("free" in str(item.get(k, '')).lower() for k in item): # Check original keys for 'free'
-                 cost_display = "Free"
+            if cost_krw_val == 0 and cost_usd_val == 0 and ("free" in str(item.get('description', '')).lower() or "free" in str(item.get('name', '')).lower()):
+                cost_display = "Free"
+
 
             website = item.get("Website", "N/A")
 
@@ -375,6 +387,8 @@ def weather(
             escaped_description_text = html_escape(description_text)
             escaped_travel_time = html_escape(travel_time)
             escaped_cost_display = html_escape(cost_display)
+            escaped_recommended_clothing = html_escape(recommended_clothing)
+            escaped_recommended_essentials = html_escape(recommended_essentials)
 
             info_content = (
                 f"<b>{escaped_name}</b><br>"
@@ -382,6 +396,8 @@ def weather(
                 f"Travel Time: {escaped_travel_time}<br>"
                 f"Cost: {escaped_cost_display}<br>"
                 f"Description: {escaped_description_text}<br>"
+                f"Clothing: {escaped_recommended_clothing}<br>"
+                f"Essentials: {escaped_recommended_essentials}<br>"
             )
 
             if website and website != "N/A" and website.strip():
@@ -414,6 +430,8 @@ def weather(
         <pre>{html_escape(ai_tip_raw)}</pre>
         """
 
+    my_location_marker_color = "blue"
+
     html_content = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -438,6 +456,7 @@ def weather(
         <p><b>Description:</b> {description}</p>
         <p><b>Humidity:</b> {humidity}%</p>
         <p><b>Interests:</b> {interests_display}</p>
+
         <h3>AI Recommendations (Budget: {budget_display})</h3>
         <ul>
             {''.join([
@@ -448,7 +467,9 @@ def weather(
                     Travel Time: {html_escape(item.get('Estimated Travel Time', 'N/A'))}<br>
                     Description: {html_escape(item.get('Description', 'N/A'))}<br>
                     Website: {f'<a href="{html_escape(item["Website"])}" target="_blank">{html_escape(item["Website"])}</a>' if item.get('Website') != 'N/A' else 'N/A'}<br>
-                    Cost: {f"{item.get('Cost_KRW', 0.0):,.0f} KRW" + (f" / ${item.get('Cost_USD', 0.0):,.2f} USD" if item.get('Cost_USD', 0.0) > 0 else '') if item.get('Cost_KRW', 0.0) > 0 or item.get('Cost_USD', 0.0) > 0 else ('Free' if item.get('Cost_KRW', 0.0) == 0 and item.get('Cost_USD', 0.0) == 0 else 'N/A')}
+                    Cost: {f"{item.get('Cost_KRW', 0.0):,.0f} KRW" + (f" / ${item.get('Cost_USD', 0.0):,.2f} USD" if item.get('Cost_USD', 0.0) > 0 else '') if item.get('Cost_KRW', 0.0) > 0 or item.get('Cost_USD', 0.0) > 0 else ('Free' if item.get('Cost_KRW', 0.0) == 0 and item.get('Cost_USD', 0.0) == 0 else 'N/A')}<br>
+                    <b>Recommended Clothing:</b> {html_escape(item.get('Recommended_Clothing', 'N/A'))}<br>
+                    <b>Recommended Essentials:</b> {html_escape(item.get('Recommended_Essentials', 'N/A'))}
                 </li>
                 """
                 for item in ai_items_with_coords
@@ -468,8 +489,8 @@ def weather(
 
             const YOUR_LAT = {lat};
             const YOUR_LON = {lon};
-            // Ensure MARKERS is correctly parsed JSON
             const MARKERS = {json.dumps(markers_js_array)};
+            const MY_LOCATION_MARKER_COLOR = "{my_location_marker_color}";
 
             async function initMap() {{
                 const mapsLib = await google.maps.importLibrary("maps");
@@ -484,11 +505,18 @@ def weather(
                     mapId: "DEMO_MAP_ID",
                 }});
 
-                // Add current location marker
+                const svgIcon = document.createElement('div');
+                svgIcon.innerHTML = `
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="` + MY_LOCATION_MARKER_COLOR + `" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                `;
+
                 const currentMarker = new AdvancedMarkerElement({{
                     map: map,
                     position: {{ lat: YOUR_LAT, lng: YOUR_LON }},
                     title: "Your Current Location",
+                    content: svgIcon
                 }});
                 const currentInfoWindow = new google.maps.InfoWindow({{
                     content: "<b>You Are Here:</b><br>{html_escape(formatted_address)}",
@@ -500,7 +528,6 @@ def weather(
                 infoWindows.push(currentInfoWindow);
 
 
-                // Add markers for recommendations
                 MARKERS.forEach((data, index) => {{
                     const marker = new AdvancedMarkerElement({{
                         map: map,
@@ -521,7 +548,6 @@ def weather(
                     infoWindows.push(infoWindow);
                 }});
 
-                // Adjust map bounds to fit all markers
                 if (markers.length > 0) {{
                     const bounds = new google.maps.LatLngBounds();
                     markers.forEach(marker => bounds.extend(marker.position));
@@ -529,7 +555,6 @@ def weather(
                 }}
             }}
 
-            // Load Google Maps API script
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key={GOOGLE_API_KEY}&callback=initMap&v=beta&libraries=marker`;
             script.async = true;
