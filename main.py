@@ -58,7 +58,7 @@ def get_ai_recommendation(loc: str, description: str, temperature: float, lat: f
         f"I am currently at coordinates ({lat}, {lon}). "
         f"Suggest 3 fun or useful things I can do near me in {loc}. Consider the temperature, I do not want to be outside if it is too hot or too cold. "
         f"Consider {budget_phrase}. {interests_phrase}"
-        f"You must recommend events or places that are close to the budget provided. It does not have to be free.\n"
+        f"You must recommend events or places that are close to the budget provided. It does not have to be free. The higher the budget amount is, the more expensive things should be suggested.\n"
         f"Format your response as a JSON array of objects, where each object represents a recommendation.\n"
         f"Each object should have the following keys:\n"
         f"- `name`: (string) The name of the place or event.\n"
@@ -147,12 +147,9 @@ def get_coordinates_for_recommendations(recommendations: list):
 
 
 
-# --- NEW/REVISED: parse_ai_json_to_list ---
+#parse ai json to a list in order to structure data
 def parse_ai_json_to_list(json_string: str) -> list:
-    """
-    Parses a JSON string from the AI into a list of structured dictionaries.
-    Handles potential preamble/postamble and ensures valid JSON parsing.
-    """
+    
     try:
         json_match = re.search(r'```json\s*(.*?)\s*```', json_string, re.DOTALL)
         if json_match:
@@ -163,7 +160,6 @@ def parse_ai_json_to_list(json_string: str) -> list:
         parsed_data = json.loads(json_content)
         if not isinstance(parsed_data, list):
             logger.warning(f"AI response is not a JSON list: {parsed_data}. Attempting to wrap.")
-            # If AI returns a single object but expects a list, wrap it
             if isinstance(parsed_data, dict):
                 parsed_data = [parsed_data]
             else:
@@ -244,7 +240,6 @@ def weather_json(loc: str = Query(...), budget_krw: float = Query(0.0), interest
     humidity = weather_data["main"].get("humidity")
 
     ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw, interests)
-    # The ai_tip_raw is now expected to be JSON.
     ai_items = parse_ai_json_to_list(ai_tip_raw)
     ai_items_with_coords = get_coordinates_for_recommendations(ai_items)
 
@@ -283,11 +278,6 @@ def weather_text(loc: str = Query(...), budget_krw: float = Query(0.0), interest
     humidity = weather_data["main"].get("humidity")
 
     ai_tip_raw = get_ai_recommendation(formatted_address, description, temperature, lat, lon, budget_krw, interests)
-    # For plain text, we'll just display the raw JSON (or an error if parsing fails)
-    # Or, if you want a more human-readable text output, you'd need to format ai_items
-    # after parsing them with `parse_ai_json_to_list`.
-    # For now, let's keep it simple and show the raw AI output (which should be JSON)
-    # if it's the plain text endpoint.
 
     budget_display = "Any"
     if budget_krw > 0:
