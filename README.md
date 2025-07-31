@@ -82,4 +82,4 @@ Live weather + Vertex AI (GPT) → 맞춤형 활동 제안!
 > 음식점 추천, 인기 명소 정보 등 **추가 추천 기능** 연동 예정!
 
 
-[📄 프로젝트 소개 PDF 보기](./travel_guide.pdf)
+[📄 프로젝트 소개 PDF 보기](./JusTrip_final.pdf)
