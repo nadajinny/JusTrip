@@ -48,4 +48,35 @@ Live weather + Vertex AI (GPT) → 맞춤형 활동 제안!
 5. 결과를 웹 UI에 출력
 
 💬 예시 출력:
+오늘 서울은 흐리고 기온은 22°C입니다.
+추천 활동:
 
+실내 미술관 투어
+북촌 한옥마을 산책
+스타필드에서 쇼핑 및 식사
+
+
+---
+
+## 📅 5. 개발 및 배포 계획 (3-Day Plan)
+
+| Day    | 작업 내용                                      |
+|--------|-----------------------------------------------|
+| 1일차   | UI 설계, 날씨 API 연동, GCP 프로젝트 설정         |
+| 2일차   | Vertex AI 연결, 프롬프트 설계, 결과 표시            |
+| 3일차   | GCP 배포, UI 다듬기, 에러 처리 추가               |
+
+---
+
+## 💡 요약 키워드
+
+- **Keyword #1**: 실시간 개인화 (Real-time personalization)
+- **Keyword #2**: LLM 활용 (Prompt-based activity generation)
+- **Keyword #3**: GCP 통합 (Google-first architecture)
+- **Keyword #4**: 빠른 배포 (Serverless Web App)
+
+---
+
+## 🔜 다음 단계
+
+> 음식점 추천, 인기 명소 정보 등 **추가 추천 기능** 연동 예정!
